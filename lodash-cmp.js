@@ -1,7 +1,7 @@
 /**
  * @license
  * Lo-Dash 1.0.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modern category="arrays, chaining, collections, functions, objects, utilities" iife="%output%" exports="commonjs" -o lodash-cmp.js`
+ * Build: `lodash modern category="arrays, chaining, collections, functions, objects, utilities" iife="%output%" exports="node" -o lodash-cmp.js`
  * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
  * Based on Underscore.js 1.4.4 <http://underscorejs.org/>
  * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud Inc.
@@ -5109,7 +5109,9 @@
   var _ = runInContext();
 
   if (freeExports && !freeExports.nodeType) {
-
-      freeExports._ = _;
+    // in Node.js or RingoJS v0.8.0+
+    if (freeModule) {
+      (freeModule.exports = _)._ = _;
+    }
   }
 
