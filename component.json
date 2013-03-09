@@ -2,5 +2,7 @@
   "name": "lodash",
   "description": "lodash component",
   "dependencies": {},
-  "scripts": ["lodash-cmp.js"]
+  "scripts": ["lodash-cmp.js"],
+  "main": "lodash-cmp.js",
+  "repo": "https://raw.github.com/pgherveou/lodash"
 }
