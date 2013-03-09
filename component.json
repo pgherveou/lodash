@@ -1,0 +1,6 @@
+{
+  "name": "lodash",
+  "description": "lodash component",
+  "dependencies": {},
+  "scripts": ["lodash-cmp.js"]
+}
