@@ -1,29 +1,28 @@
-# Lo-Dash <sup>v1.0.1</sup>
-[![build status](https://secure.travis-ci.org/bestiejs/lodash.png)](http://travis-ci.org/bestiejs/lodash)
+# Lo-Dash <sup>v1.2.1</sup>
 
 A low-level utility library delivering consistency, [customization](https://github.com/bestiejs/lodash#custom-builds), [performance](http://lodash.com/benchmarks), and [extra features](https://github.com/bestiejs/lodash#features).
 
 ## Download
 
 * Lo-Dash builds (for modern environments):<br>
-[Development](https://raw.github.com/bestiejs/lodash/v1.0.1/dist/lodash.js) and
-[Production](https://raw.github.com/bestiejs/lodash/v1.0.1/dist/lodash.min.js)
+[Development](https://raw.github.com/bestiejs/lodash/v1.2.1/dist/lodash.js) and
+[Production](https://raw.github.com/bestiejs/lodash/v1.2.1/dist/lodash.min.js)
 
 * Lo-Dash compatibility builds (for legacy and modern environments):<br>
-[Development](https://raw.github.com/bestiejs/lodash/v1.0.1/dist/lodash.compat.js) and
-[Production](https://raw.github.com/bestiejs/lodash/v1.0.1/dist/lodash.compat.min.js)
+[Development](https://raw.github.com/bestiejs/lodash/v1.2.1/dist/lodash.compat.js) and
+[Production](https://raw.github.com/bestiejs/lodash/v1.2.1/dist/lodash.compat.min.js)
 
 * Underscore compatibility builds:<br>
-[Development](https://raw.github.com/bestiejs/lodash/v1.0.1/dist/lodash.underscore.js) and
-[Production](https://raw.github.com/bestiejs/lodash/v1.0.1/dist/lodash.underscore.min.js)
+[Development](https://raw.github.com/bestiejs/lodash/v1.2.1/dist/lodash.underscore.js) and
+[Production](https://raw.github.com/bestiejs/lodash/v1.2.1/dist/lodash.underscore.min.js)
 
-* CDN copies of ≤ v1.0.1’s builds are available on [cdnjs](http://cdnjs.com/) thanks to [CloudFlare](http://www.cloudflare.com/):<br>
-[Lo-Dash dev](http://cdnjs.cloudflare.com/ajax/libs/lodash.js/1.0.1/lodash.js),
-[Lo-Dash prod](http://cdnjs.cloudflare.com/ajax/libs/lodash.js/1.0.1/lodash.min.js),<br>
-[Lo-Dash compat-dev](http://cdnjs.cloudflare.com/ajax/libs/lodash.js/1.0.1/lodash.compat.js),
-[Lo-Dash compat-prod](http://cdnjs.cloudflare.com/ajax/libs/lodash.js/1.0.1/lodash.compat.min.js),<br>
-[Underscore compat-dev](http://cdnjs.cloudflare.com/ajax/libs/lodash.js/1.0.1/lodash.underscore.js), and
-[Underscore compat-prod](http://cdnjs.cloudflare.com/ajax/libs/lodash.js/1.0.1/lodash.underscore.min.js)
+* CDN copies of ≤ v1.2.1’s builds are available on [cdnjs](http://cdnjs.com/) thanks to [CloudFlare](http://www.cloudflare.com/):<br>
+[Lo-Dash dev](http://cdnjs.cloudflare.com/ajax/libs/lodash.js/1.2.1/lodash.js),
+[Lo-Dash prod](http://cdnjs.cloudflare.com/ajax/libs/lodash.js/1.2.1/lodash.min.js),<br>
+[Lo-Dash compat-dev](http://cdnjs.cloudflare.com/ajax/libs/lodash.js/1.2.1/lodash.compat.js),
+[Lo-Dash compat-prod](http://cdnjs.cloudflare.com/ajax/libs/lodash.js/1.2.1/lodash.compat.min.js),<br>
+[Underscore compat-dev](http://cdnjs.cloudflare.com/ajax/libs/lodash.js/1.2.1/lodash.underscore.js), and
+[Underscore compat-prod](http://cdnjs.cloudflare.com/ajax/libs/lodash.js/1.2.1/lodash.underscore.min.js)
 
 * For optimal file size, [create a custom build](https://github.com/bestiejs/lodash#custom-builds) with only the features you need
 
@@ -56,13 +55,20 @@ For more information check out these articles, screencasts, and other videos ove
  * [_.bindKey](http://lodash.com/docs#bindKey) for binding [*“lazy”* defined](http://michaux.ca/articles/lazy-function-definition-pattern) methods
  * [_.cloneDeep](http://lodash.com/docs#cloneDeep) for deep cloning arrays and objects
  * [_.contains](http://lodash.com/docs#contains) accepts a `fromIndex` argument
+ * [_.debounce](http://lodash.com/docs#debounce) and [_.throttle](http://lodash.com/docs#throttle) accept an `options` argument for more control
+ * [_.createCallback](http://lodash.com/docs#createCallback) to customize how callback arguments are handled and support callback shorthands in mixins
+ * [_.findIndex](http://lodash.com/docs#findIndex) and [_.findKey](http://lodash.com/docs#findKey) for finding indexes and keys of collections
  * [_.forEach](http://lodash.com/docs#forEach) is chainable and supports exiting iteration early
  * [_.forIn](http://lodash.com/docs#forIn) for iterating over an object’s own and inherited properties
  * [_.forOwn](http://lodash.com/docs#forOwn) for iterating over an object’s own properties
  * [_.isPlainObject](http://lodash.com/docs#isPlainObject) checks if values are created by the `Object` constructor
  * [_.merge](http://lodash.com/docs#merge) for a deep [_.extend](http://lodash.com/docs#extend)
+ * [_.parseInt](http://lodash.com/docs#parseInt) for consistent cross-environment behavior
  * [_.partial](http://lodash.com/docs#partial) and [_.partialRight](http://lodash.com/docs#partialRight) for partial application without `this` binding
+ * [_.runInContext](http://lodash.com/docs#runInContext) for easier mocking and extended environment support
+ * [_.support](http://lodash.com/docs#support) to flag environment features
  * [_.template](http://lodash.com/docs#template) supports [*“imports”* options](http://lodash.com/docs#templateSettings_imports), [ES6 template delimiters](http://people.mozilla.org/~jorendorff/es6-draft.html#sec-7.8.6), and [sourceURLs](http://www.html5rocks.com/en/tutorials/developertools/sourcemaps/#toc-sourceurl)
+ * [_.unzip](http://lodash.com/docs#unzip) as the inverse of [_.zip](http://lodash.com/docs#zip)
  * [_.where](http://lodash.com/docs#where) supports deep object comparisons
  * [_.clone](http://lodash.com/docs#clone), [_.omit](http://lodash.com/docs#omit), [_.pick](http://lodash.com/docs#pick),
    [and more…](http://lodash.com/docs "_.assign, _.cloneDeep, _.first, _.initial, _.isEqual, _.last, _.merge, _.rest") accept `callback` and `thisArg` arguments
@@ -73,22 +79,17 @@ For more information check out these articles, screencasts, and other videos ove
 
 ## Support
 
-Lo-Dash has been tested in at least Chrome 5~24, Firefox 1~18, IE 6-10, Opera 9.25-12, Safari 3-6, Node.js 0.4.8-0.8.20, Narwhal 0.3.2, PhantomJS 1.8.1, RingoJS 0.9, and Rhino 1.7RC5.
+Lo-Dash has been tested in at least Chrome 5~26, Firefox 2~20, IE 6-10, Opera 9.25~12, Safari 3-6, Node.js 0.4.8-0.10.5, Narwhal 0.3.2, PhantomJS 1.9.0, RingoJS 0.9, and Rhino 1.7RC5.
 
 ## Custom builds
 
 Custom builds make it easy to create lightweight versions of Lo-Dash containing only the methods you need.
 To top it off, we handle all method dependency and alias mapping for you.
+For a more detailed summary over the differences between various builds, check out the [wiki page](https://github.com/bestiejs/lodash/wiki/build-differences).
 
  * Backbone builds, with only methods required by Backbone, may be created using the `backbone` modifier argument.
 ```bash
 lodash backbone
-```
-
- * CSP builds, supporting default [Content Security Policy](https://dvcs.w3.org/hg/content-security-policy/raw-file/tip/csp-specification.dev.html) restrictions, may be created using the `csp` modifier argument.
-   The `csp` modifier is an alias of the `mobile` modifier. Lo-Dash may be used in Chrome extensions by using either the `csp`, `mobile`, or `underscore` build and using precompiled templates, or loading Lo-Dash in a [sandbox](http://developer.chrome.com/stable/extensions/sandboxingEval.html).
-```bash
-lodash csp
 ```
 
  * Legacy builds, tailored for older environments without [ES5 support](http://es5.github.com/), may be created using the `legacy` modifier argument.
@@ -170,7 +171,7 @@ lodash settings="{interpolate:/\{\{([\s\S]+?)\}\}/g}"
 lodash moduleId="underscore"
 ```
 
-All arguments, except `legacy` with `csp`, `mobile`, `modern`, or `underscore`, may be combined.<br>
+All arguments, except `legacy` with `mobile`, `modern`, or `underscore`, may be combined.<br>
 Unless specified by `-o` or `--output`, all files created are saved to the current working directory.
 
 The following options are also supported:
@@ -247,30 +248,29 @@ require({
 
 ## Release Notes
 
-### <sup>v1.0.1</sup>
+### <sup>v1.2.1</sup>
 
- * Add support for specifying source map URLs in `-p`/`--source-map` build options
- * Ensured the second argument passed to `_.assign` is not treated as a `callback`
- * Ensured `-p`/`--source-map` build options correctly set the `sourceMappingURL`
- * Made `-p`/`--source-map` build options set source map *“sources”* keys based on the builds performed
- * Made `_.defer` use `setImmediate`, in Node.js, when available
- * Made `_.where` search arrays for values regardless of their index position
- * Removed dead code from `_.template`
+ * Added Component package support
+ * Updated the build utility to work with changes in GitHub’s API
+ * Ensured `_.isPlainObject` works with objects created by `Object.create(null)`
+ * Ensured *“isType”* methods return `false` for subclassed values
+ * Ensured debounced functions, with `leading` and `trailing` calls enabled,<br>
+   only perform trailing calls after they’re called more than once
 
 The full changelog is available [here](https://github.com/bestiejs/lodash/wiki/Changelog).
 
 ## BestieJS
 
-Lo-Dash is part of the BestieJS *“Best in Class”* module collection. This means we promote solid browser/environment support, ES5 precedents, unit testing, and plenty of documentation.
+Lo-Dash is part of the BestieJS *“Best in Class”* module collection. This means we promote solid browser/environment support, ES5+ precedents, unit testing, and plenty of documentation.
 
 ## Author
 
-* [John-David Dalton](http://allyoucanleet.com/)
-  [![twitter/jdalton](http://gravatar.com/avatar/299a3d891ff1920b69c364d061007043?s=70)](https://twitter.com/jdalton "Follow @jdalton on Twitter")
+| [![twitter/jdalton](http://gravatar.com/avatar/299a3d891ff1920b69c364d061007043?s=70)](http://twitter.com/jdalton "Follow @jdalton on Twitter") |
+|---|
+| [John-David Dalton](http://allyoucanleet.com/) |
 
 ## Contributors
 
-* [Kit Cambridge](http://kitcambridge.github.com/)
-  [![twitter/kitcambridge](http://gravatar.com/avatar/6662a1d02f351b5ef2f8b4d815804661?s=70)](https://twitter.com/kitcambridge "Follow @kitcambridge on Twitter")
-* [Mathias Bynens](http://mathiasbynens.be/)
-  [![twitter/mathias](http://gravatar.com/avatar/24e08a9ea84deb17ae121074d0f17125?s=70)](https://twitter.com/mathias "Follow @mathias on Twitter")
+| [![twitter/kitcambridge](http://gravatar.com/avatar/6662a1d02f351b5ef2f8b4d815804661?s=70)](https://twitter.com/kitcambridge "Follow @kitcambridge on Twitter") | [![twitter/mathias](http://gravatar.com/avatar/24e08a9ea84deb17ae121074d0f17125?s=70)](http://twitter.com/mathias "Follow @mathias on Twitter") |
+|---|---|
+| [Kit Cambridge](http://kitcambridge.github.io/) | [Mathias Bynens](http://mathiasbynens.be/) |

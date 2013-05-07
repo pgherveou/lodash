@@ -3,30 +3,26 @@
   'use strict';
 
   /** Load Node.js modules */
-  var fs = require('fs'),
-      https = require('https'),
-      path = require('path'),
+  var https = require('https'),
       spawn = require('child_process').spawn,
       zlib = require('zlib');
 
   /** Load other modules */
   var _ = require('../lodash.js'),
-      mkdirpSync = require('./mkdirp-sync.js'),
       preprocess = require('./pre-compile.js'),
       postprocess = require('./post-compile.js'),
-      tar = require('../vendor/tar/tar.js');
+      tar = require('../vendor/tar/tar.js'),
+      util = require('./util.js');
 
-  /** Add `fs.existsSync` for older versions of Node.js */
-  fs.existsSync || (fs.existsSync = path.existsSync);
-
-  /** Add `path.sep` for older versions of Node.js */
-  path.sep || (path.sep = process.platform == 'win32' ? '\\' : '/');
+  /** Module shortcuts */
+  var fs = util.fs,
+      path = util.path;
 
   /** The Git object ID of `closure-compiler.tar.gz` */
-  var closureId = 'a95a8007892aa824ce90c6aa3d3abb0489bf0fff';
+  var closureId = '7815712f73ccb21f587bf3fb72a2f50be788515d';
 
   /** The Git object ID of `uglifyjs.tar.gz` */
-  var uglifyId = '548bf495606eb4046c4573b1107f0225e274e1e1';
+  var uglifyId = 'fb620e8672ad194b3ab501790e19c40c8ac79286';
 
   /** The path of the directory that is the base of the repository */
   var basePath = fs.realpathSync(path.join(__dirname, '..'));
@@ -47,7 +43,7 @@
   var mediaType = 'application/vnd.github.v3.raw';
 
   /** Used to detect the Node.js executable in command-line arguments */
-  var reNode = RegExp('(?:^|' + path.sep + ')node(?:\\.exe)?$');
+  var reNode = RegExp('(?:^|' + path.sepEscaped + ')node(?:\\.exe)?$');
 
   /** Used to reference parts of the blob href */
   var location = (function() {
@@ -132,9 +128,9 @@
         return;
       }
       var filePath = options[options.length - 1],
-          isMapped = options.indexOf('-p') > -1 || options.indexOf('--source-map') > -1,
-          isSilent = options.indexOf('-s') > -1 || options.indexOf('--silent') > -1,
-          isTemplate = options.indexOf('-t') > -1 || options.indexOf('--template') > -1,
+          isMapped = _.contains(options, '-p') || _.contains(options, '--source-map'),
+          isSilent = _.contains(options, '-s') || _.contains(options, '--silent'),
+          isTemplate = _.contains(options, '-t') || _.contains(options, '--template'),
           outputPath = path.join(path.dirname(filePath), path.basename(filePath, '.js') + '.min.js');
 
       modes = options.reduce(function(result, value) {
@@ -146,7 +142,7 @@
         if (/-o|--output/.test(value)) {
           result = options[index + 1];
           var dirname = path.dirname(result);
-          mkdirpSync(dirname);
+          fs.mkdirpSync(dirname);
           result = path.join(fs.realpathSync(dirname), path.basename(result));
         }
         return result;
@@ -247,9 +243,9 @@
     };
 
     // begin the minification process
-    if (modes.indexOf('simple') > -1) {
+    if (_.contains(modes, 'simple')) {
       closureCompile.call(this, source, 'simple', onClosureSimpleCompile.bind(this));
-    } else if (modes.indexOf('advanced') > -1) {
+    } else if (_.contains(modes, 'advanced')) {
       onClosureSimpleGzip.call(this);
     } else {
       onClosureAdvancedGzip.call(this);
@@ -314,7 +310,10 @@
         // containing Base64-encoded blob data. Overriding the `Accept` header
         // with the GitHub raw media type returns the blob data directly.
         // See http://developer.github.com/v3/media/.
-        'Accept': mediaType
+        'Accept': mediaType,
+        // As of 2013-04-24, the GitHub API mandates the `User-Agent` header
+        // for all requests.
+        'User-Agent': 'Lo-Dash/' + _.VERSION
       }
     }, function(response) {
       var decompressor = zlib.createUnzip(),
@@ -455,6 +454,7 @@
       toplevel.figure_out_scope();
       toplevel = toplevel.transform(uglifyJS.Compressor({
         'comparisons': false,
+        'unsafe': true,
         'unsafe_comps': true,
         'warnings': false
       }));
@@ -523,7 +523,7 @@
       this.compiled.simple.gzip = result;
     }
     // compile the source using advanced optimizations
-    if (this.modes.indexOf('advanced') > -1) {
+    if (_.contains(this.modes, 'advanced')) {
       closureCompile.call(this, this.source, 'advanced', onClosureAdvancedCompile.bind(this));
     } else {
       onClosureAdvancedGzip.call(this);
@@ -610,10 +610,10 @@
     }
     // minify the already Closure Compiler simple optimized source using UglifyJS
     var modes = this.modes;
-    if (modes.indexOf('hybrid') > -1) {
-      if (modes.indexOf('simple') > -1) {
+    if (_.contains(modes, 'hybrid')) {
+      if (_.contains(modes, 'simple')) {
         uglify.call(this, this.compiled.simple.source, 'hybrid (simple)', onSimpleHybrid.bind(this));
-      } else if (modes.indexOf('advanced') > -1) {
+      } else if (_.contains(modes, 'advanced')) {
         onSimpleHybridGzip.call(this);
       }
     } else {
@@ -655,7 +655,7 @@
       this.hybrid.simple.gzip = result;
     }
     // minify the already Closure Compiler advance optimized source using UglifyJS
-    if (this.modes.indexOf('advanced') > -1) {
+    if (_.contains(this.modes, 'advanced')) {
       uglify.call(this, this.compiled.advanced.source, 'hybrid (advanced)', onAdvancedHybrid.bind(this));
     } else {
       onComplete.call(this);

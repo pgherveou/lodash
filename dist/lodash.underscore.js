@@ -1,7 +1,7 @@
 /**
  * @license
- * Lo-Dash 1.0.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash underscore -o ./dist/lodash.underscore.js`
+ * Lo-Dash 1.2.1 (Custom Build) <http://lodash.com/>
+ * Build: `lodash underscore exports="amd,commonjs,global,node" -o ./dist/lodash.underscore.js`
  * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
  * Based on Underscore.js 1.4.4 <http://underscorejs.org/>
  * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud Inc.
@@ -18,9 +18,9 @@
   /** Detect free variable `module` */
   var freeModule = typeof module == 'object' && module && module.exports == freeExports && module;
 
-  /** Detect free variable `global` and use it as `window` */
+  /** Detect free variable `global`, from Node.js or Browserified code, and use it as `window` */
   var freeGlobal = typeof global == 'object' && global;
-  if (freeGlobal.global === freeGlobal) {
+  if (freeGlobal.global === freeGlobal || freeGlobal.window === freeGlobal) {
     window = freeGlobal;
   }
 
@@ -30,22 +30,28 @@
   /** Used internally to indicate various things */
   var indicatorObject = {};
 
-  /** Used to match HTML entities */
-  var reEscapedHtml = /&(?:amp|lt|gt|quot|#39);/g;
+  /** Used to prefix keys to avoid issues with `__proto__` and properties on `Object.prototype` */
+  var keyPrefix = +new Date + '';
+
+  /** Used as the size when optimizations are enabled for large arrays */
+  var largeArraySize = 200;
 
   /** Used to match empty string literals in compiled template source */
   var reEmptyStringLeading = /\b__p \+= '';/g,
       reEmptyStringMiddle = /\b(__p \+=) '' \+/g,
       reEmptyStringTrailing = /(__e\(.*?\)|\b__t\)) \+\n'';/g;
 
-  /** Used to match regexp flags from their coerced string values */
-  var reFlags = /\w*$/;
+  /** Used to match HTML entities */
+  var reEscapedHtml = /&(?:amp|lt|gt|quot|#39);/g;
 
   /**
    * Used to match ES6 template delimiters
    * http://people.mozilla.org/~jorendorff/es6-draft.html#sec-7.8.6
    */
   var reEsTemplate = /\$\{([^\\}]*(?:\\.[^\\}]*)*)\}/g;
+
+  /** Used to match regexp flags from their coerced string values */
+  var reFlags = /\w*$/;
 
   /** Used to match "interpolate" template delimiters */
   var reInterpolate = /<%=([\s\S]+?)%>/g;
@@ -105,7 +111,7 @@
 
   /** Used to detect if a method is native */
   var reNative = RegExp('^' +
-    (objectRef.valueOf + '')
+    String(objectRef.valueOf)
       .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       .replace(/valueOf|for [^\]]+/g, '.+?') + '$'
   );
@@ -121,14 +127,15 @@
       toString = objectRef.toString;
 
   /* Native method shortcuts for methods with the same name as other `lodash` methods */
-  var nativeBind = reNative.test(nativeBind = slice.bind) && nativeBind,
+  var nativeBind = reNative.test(nativeBind = toString.bind) && nativeBind,
       nativeIsArray = reNative.test(nativeIsArray = Array.isArray) && nativeIsArray,
       nativeIsFinite = window.isFinite,
       nativeIsNaN = window.isNaN,
       nativeKeys = reNative.test(nativeKeys = Object.keys) && nativeKeys,
       nativeMax = Math.max,
       nativeMin = Math.min,
-      nativeRandom = Math.random;
+      nativeRandom = Math.random,
+      nativeSlice = arrayRef.slice;
 
   /** Detect various environments */
   var isIeOpera = reNative.test(window.attachEvent),
@@ -137,7 +144,7 @@
   /*--------------------------------------------------------------------------*/
 
   /**
-   * Creates a `lodash` object, that wraps the given `value`, to enable method
+   * Creates a `lodash` object, which wraps the given `value`, to enable method
    * chaining.
    *
    * In addition to Lo-Dash methods, wrappers also have the following `Array` methods:
@@ -148,14 +155,15 @@
    * implicitly or explicitly included in the build.
    *
    * The chainable wrapper functions are:
-   * `after`, `assign`, `bind`, `bindAll`, `bindKey`, `chain`, `compact`, `compose`,
-   * `concat`, `countBy`, `debounce`, `defaults`, `defer`, `delay`, `difference`,
-   * `filter`, `flatten`, `forEach`, `forIn`, `forOwn`, `functions`, `groupBy`,
-   * `initial`, `intersection`, `invert`, `invoke`, `keys`, `map`, `max`, `memoize`,
-   * `merge`, `min`, `object`, `omit`, `once`, `pairs`, `partial`, `partialRight`,
-   * `pick`, `pluck`, `push`, `range`, `reject`, `rest`, `reverse`, `shuffle`,
-   * `slice`, `sort`, `sortBy`, `splice`, `tap`, `throttle`, `times`, `toArray`,
-   * `union`, `uniq`, `unshift`, `values`, `where`, `without`, `wrap`, and `zip`
+   * `after`, `assign`, `bind`, `bindAll`, `bindKey`, `chain`, `compact`,
+   * `compose`, `concat`, `countBy`, `createCallback`, `debounce`, `defaults`,
+   * `defer`, `delay`, `difference`, `filter`, `flatten`, `forEach`, `forIn`,
+   * `forOwn`, `functions`, `groupBy`, `initial`, `intersection`, `invert`,
+   * `invoke`, `keys`, `map`, `max`, `memoize`, `merge`, `min`, `object`, `omit`,
+   * `once`, `pairs`, `partial`, `partialRight`, `pick`, `pluck`, `push`, `range`,
+   * `reject`, `rest`, `reverse`, `shuffle`, `slice`, `sort`, `sortBy`, `splice`,
+   * `tap`, `throttle`, `times`, `toArray`, `union`, `uniq`, `unshift`, `unzip`,
+   * `values`, `where`, `without`, `wrap`, and `zip`
    *
    * The non-chainable wrapper functions are:
    * `clone`, `cloneDeep`, `contains`, `escape`, `every`, `find`, `has`,
@@ -174,11 +182,31 @@
    * @category Chaining
    * @param {Mixed} value The value to wrap in a `lodash` instance.
    * @returns {Object} Returns a `lodash` instance.
+   * @example
+   *
+   * var wrapped = _([1, 2, 3]);
+   *
+   * // returns an unwrapped value
+   * wrapped.reduce(function(sum, num) {
+   *   return sum + num;
+   * });
+   * // => 6
+   *
+   * // returns a wrapped value
+   * var squares = wrapped.map(function(num) {
+   *   return num * num;
+   * });
+   *
+   * _.isArray(squares);
+   * // => false
+   *
+   * _.isArray(squares.value());
+   * // => true
    */
   function lodash(value) {
     return (value instanceof lodash)
       ? value
-      : new lodashWrapper(value)
+      : new lodashWrapper(value);
   }
 
   /**
@@ -192,14 +220,6 @@
 
   (function() {
     var object = { '0': 1, 'length': 1 };
-
-    /**
-     * Detect if `arguments` objects are `Object` objects (all but Opera < 10.5).
-     *
-     * @memberOf _.support
-     * @type Boolean
-     */
-    support.argsObject = arguments.constructor == Object;
 
     /**
      * Detect if `Function#bind` exists and is inferred to be fast (all but V8).
@@ -320,19 +340,24 @@
    * @param {Function|String} func The function to bind or the method name.
    * @param {Mixed} [thisArg] The `this` binding of `func`.
    * @param {Array} partialArgs An array of arguments to be partially applied.
-   * @param {Object} [rightIndicator] Used to indicate partially applying arguments from the right.
+   * @param {Object} [idicator] Used to indicate binding by key or partially
+   *  applying arguments from the right.
    * @returns {Function} Returns the new bound function.
    */
-  function createBound(func, thisArg, partialArgs, rightIndicator) {
+  function createBound(func, thisArg, partialArgs, indicator) {
     var isFunc = isFunction(func),
         isPartial = !partialArgs,
         key = thisArg;
 
     // juggle arguments
     if (isPartial) {
+      var rightIndicator = indicator;
       partialArgs = thisArg;
     }
-    if (!isFunc) {
+    else if (!isFunc) {
+      if (!indicator) {
+        throw new TypeError;
+      }
       thisArg = func;
     }
 
@@ -347,7 +372,7 @@
       }
       if (partialArgs.length) {
         args = args.length
-          ? (args = slice(args), rightIndicator ? args.concat(partialArgs) : partialArgs.concat(args))
+          ? (args = nativeSlice.call(args), rightIndicator ? args.concat(partialArgs) : partialArgs.concat(args))
           : partialArgs;
       }
       if (this instanceof bound) {
@@ -365,39 +390,6 @@
     }
     return bound;
   }
-
-  /**
-   * A function compiled to iterate `arguments` objects, arrays, objects, and
-   * strings consistenly across environments, executing the `callback` for each
-   * element in the `collection`. The `callback` is bound to `thisArg` and invoked
-   * with three arguments; (value, index|key, collection). Callbacks may exit
-   * iteration early by explicitly returning `false`.
-   *
-   * @private
-   * @type Function
-   * @param {Array|Object|String} collection The collection to iterate over.
-   * @param {Function} [callback=identity] The function called per iteration.
-   * @param {Mixed} [thisArg] The `this` binding of `callback`.
-   * @returns {Array|Object|String} Returns `collection`.
-   */
-  var each = function (collection, callback, thisArg) {
-    var index, iterable = collection, result = iterable;
-    if (!iterable) return result;
-    callback = callback && typeof thisArg == 'undefined' ? callback : createCallback(callback, thisArg);
-    var length = iterable.length; index = -1;
-    if (typeof length == 'number') {
-      while (++index < length) {
-        if (callback(iterable[index], index, collection) === indicatorObject) return result
-      }
-    }
-    else {  
-      for (index in iterable) {
-        if (hasOwnProperty.call(iterable, index)) {    
-        if (callback(iterable[index], index, collection) === indicatorObject) return result;    
-        }
-      }  
-    }
-  };
 
   /**
    * Used by `template` to escape characters for inclusion in compiled
@@ -423,19 +415,6 @@
   }
 
   /**
-   * Checks if `value` is a DOM node in IE < 9.
-   *
-   * @private
-   * @param {Mixed} value The value to check.
-   * @returns {Boolean} Returns `true` if the `value` is a DOM node, else `false`.
-   */
-  function isNode(value) {
-    // IE < 9 presents DOM nodes as `Object` objects except they have `toString`
-    // methods that are `typeof` "string" and still can coerce nodes to strings
-    return typeof value.toString != 'function' && typeof (value + '') == 'string';
-  }
-
-  /**
    * A fast path for creating `lodash` wrapper objects.
    *
    * @private
@@ -455,34 +434,6 @@
    */
   function noop() {
     // no operation performed
-  }
-
-  /**
-   * Slices the `collection` from the `start` index up to, but not including,
-   * the `end` index.
-   *
-   * Note: This function is used, instead of `Array#slice`, to support node lists
-   * in IE < 9 and to ensure dense arrays are returned.
-   *
-   * @private
-   * @param {Array|Object|String} collection The collection to slice.
-   * @param {Number} start The start index.
-   * @param {Number} end The end index.
-   * @returns {Array} Returns the new array.
-   */
-  function slice(array, start, end) {
-    start || (start = 0);
-    if (typeof end == 'undefined') {
-      end = array ? array.length : 0;
-    }
-    var index = -1,
-        length = end - start || 0,
-        result = Array(length < 0 ? 0 : length);
-
-    while (++index < length) {
-      result[index] = array[start + index];
-    }
-    return result;
   }
 
   /**
@@ -525,82 +476,6 @@
   }
 
   /**
-   * Iterates over `object`'s own and inherited enumerable properties, executing
-   * the `callback` for each property. The `callback` is bound to `thisArg` and
-   * invoked with three arguments; (value, key, object). Callbacks may exit iteration
-   * early by explicitly returning `false`.
-   *
-   * @static
-   * @memberOf _
-   * @type Function
-   * @category Objects
-   * @param {Object} object The object to iterate over.
-   * @param {Function} [callback=identity] The function called per iteration.
-   * @param {Mixed} [thisArg] The `this` binding of `callback`.
-   * @returns {Object} Returns `object`.
-   * @example
-   *
-   * function Dog(name) {
-   *   this.name = name;
-   * }
-   *
-   * Dog.prototype.bark = function() {
-   *   alert('Woof, woof!');
-   * };
-   *
-   * _.forIn(new Dog('Dagny'), function(value, key) {
-   *   alert(key);
-   * });
-   * // => alerts 'name' and 'bark' (order is not guaranteed)
-   */
-  var forIn = function (collection, callback) {
-    var index, iterable = collection, result = iterable;
-    if (!iterable) return result;
-    if (!objectTypes[typeof iterable]) return result;
-    callback || (callback = identity);
-
-      for (index in iterable) {
-        if (callback(iterable[index], index, collection) === indicatorObject) return result;    
-      }  
-    return result
-  };
-
-  /**
-   * Iterates over an object's own enumerable properties, executing the `callback`
-   * for each property. The `callback` is bound to `thisArg` and invoked with three
-   * arguments; (value, key, object). Callbacks may exit iteration early by explicitly
-   * returning `false`.
-   *
-   * @static
-   * @memberOf _
-   * @type Function
-   * @category Objects
-   * @param {Object} object The object to iterate over.
-   * @param {Function} [callback=identity] The function called per iteration.
-   * @param {Mixed} [thisArg] The `this` binding of `callback`.
-   * @returns {Object} Returns `object`.
-   * @example
-   *
-   * _.forOwn({ '0': 'zero', '1': 'one', 'length': 2 }, function(num, key) {
-   *   alert(key);
-   * });
-   * // => alerts '0', '1', and 'length' (order is not guaranteed)
-   */
-  var forOwn = function (collection, callback) {
-    var index, iterable = collection, result = iterable;
-    if (!iterable) return result;
-    if (!objectTypes[typeof iterable]) return result;
-    callback || (callback = identity);
-
-      for (index in iterable) {
-        if (hasOwnProperty.call(iterable, index)) {    
-        if (callback(iterable[index], index, collection) === indicatorObject) return result;    
-        }
-      }  
-    return result
-  };
-
-  /**
    * Checks if `value` is an array.
    *
    * @static
@@ -617,9 +492,29 @@
    * // => true
    */
   var isArray = nativeIsArray || function(value) {
-    // `instanceof` may cause a memory leak in IE 7 if `value` is a host object
-    // http://ajaxian.com/archives/working-aroung-the-instanceof-memory-leak
-    return (support.argsObject && value instanceof Array) || toString.call(value) == arrayClass;
+    return value ? (typeof value == 'object' && toString.call(value) == arrayClass) : false;
+  };
+
+  /**
+   * A fallback implementation of `Object.keys` which produces an array of the
+   * given object's own enumerable property names.
+   *
+   * @private
+   * @type Function
+   * @param {Object} object The object to inspect.
+   * @returns {Array} Returns a new array of property names.
+   */
+  var shimKeys = function (object) {
+    var index, iterable = object, result = [];
+    if (!iterable) return result;
+    if (!(objectTypes[typeof object])) return result;
+
+      for (index in iterable) {
+        if (hasOwnProperty.call(iterable, index)) {    
+        result.push(index);    
+        }
+      }  
+    return result
   };
 
   /**
@@ -641,52 +536,6 @@
     }
     return nativeKeys(object);
   };
-
-  /**
-   * A fallback implementation of `isPlainObject` that checks if a given `value`
-   * is an object created by the `Object` constructor, assuming objects created
-   * by the `Object` constructor have no inherited enumerable properties and that
-   * there are no `Object.prototype` extensions.
-   *
-   * @private
-   * @param {Mixed} value The value to check.
-   * @returns {Boolean} Returns `true`, if `value` is a plain object, else `false`.
-   */
-  function shimIsPlainObject(value) {
-    // avoid non-objects and false positives for `arguments` objects
-    var result = false;
-    if (!(value && typeof value == 'object') || isArguments(value)) {
-      return result;
-    }
-    // check that the constructor is `Object` (i.e. `Object instanceof Object`)
-    var ctor = value.constructor;
-    if ((!isFunction(ctor)) || ctor instanceof ctor) {
-      // In most environments an object's own properties are iterated before
-      // its inherited properties. If the last iterated property is an object's
-      // own property then there are no inherited enumerable properties.
-      forIn(value, function(value, key) {
-        result = key;
-      });
-      return result === false || hasOwnProperty.call(value, result);
-    }
-    return result;
-  }
-
-  /**
-   * A fallback implementation of `Object.keys` that produces an array of the
-   * given object's own enumerable property names.
-   *
-   * @private
-   * @param {Object} object The object to inspect.
-   * @returns {Array} Returns a new array of property names.
-   */
-  function shimKeys(object) {
-    var result = [];
-    forOwn(object, function(value, key) {
-      result.push(key);
-    });
-    return result;
-  }
 
   /**
    * Used to convert characters to HTML entities:
@@ -768,8 +617,8 @@
    * @param {Boolean} [deep=false] A flag to indicate a deep clone.
    * @param {Function} [callback] The function to customize cloning values.
    * @param {Mixed} [thisArg] The `this` binding of `callback`.
-   * @param- {Array} [stackA=[]] Internally used to track traversed source objects.
-   * @param- {Array} [stackB=[]] Internally used to associate clones with source counterparts.
+   * @param- {Array} [stackA=[]] Tracks traversed source objects.
+   * @param- {Array} [stackB=[]] Associates clones with source counterparts.
    * @returns {Mixed} Returns the cloned `value`.
    * @example
    *
@@ -798,8 +647,8 @@
    */
   function clone(value) {
     return isObject(value)
-      ? (isArray(value) ? slice(value) : assign({}, value))
-      : value
+      ? (isArray(value) ? nativeSlice.call(value) : assign({}, value))
+      : value;
   }
 
   /**
@@ -813,8 +662,8 @@
    * @category Objects
    * @param {Object} object The destination object.
    * @param {Object} [source1, source2, ...] The source objects.
-   * @param- {Object} [guard] Internally used to allow working with `_.reduce`
-   *  without using its callback's `key` and `object` arguments as sources.
+   * @param- {Object} [guard] Allows working with `_.reduce` without using its
+   *  callback's `key` and `object` arguments as sources.
    * @returns {Object} Returns the destination object.
    * @example
    *
@@ -838,6 +687,80 @@
     }
     return object;
   }
+
+  /**
+   * Iterates over `object`'s own and inherited enumerable properties, executing
+   * the `callback` for each property. The `callback` is bound to `thisArg` and
+   * invoked with three arguments; (value, key, object). Callbacks may exit iteration
+   * early by explicitly returning `false`.
+   *
+   * @static
+   * @memberOf _
+   * @type Function
+   * @category Objects
+   * @param {Object} object The object to iterate over.
+   * @param {Function} [callback=identity] The function called per iteration.
+   * @param {Mixed} [thisArg] The `this` binding of `callback`.
+   * @returns {Object} Returns `object`.
+   * @example
+   *
+   * function Dog(name) {
+   *   this.name = name;
+   * }
+   *
+   * Dog.prototype.bark = function() {
+   *   alert('Woof, woof!');
+   * };
+   *
+   * _.forIn(new Dog('Dagny'), function(value, key) {
+   *   alert(key);
+   * });
+   * // => alerts 'name' and 'bark' (order is not guaranteed)
+   */
+  var forIn = function (collection, callback) {
+    var index, iterable = collection, result = iterable;
+    if (!iterable) return result;
+    if (!objectTypes[typeof iterable]) return result;
+
+      for (index in iterable) {
+        if (callback(iterable[index], index, collection) === indicatorObject) return result;    
+      }  
+    return result
+  };
+
+  /**
+   * Iterates over an object's own enumerable properties, executing the `callback`
+   * for each property. The `callback` is bound to `thisArg` and invoked with three
+   * arguments; (value, key, object). Callbacks may exit iteration early by explicitly
+   * returning `false`.
+   *
+   * @static
+   * @memberOf _
+   * @type Function
+   * @category Objects
+   * @param {Object} object The object to iterate over.
+   * @param {Function} [callback=identity] The function called per iteration.
+   * @param {Mixed} [thisArg] The `this` binding of `callback`.
+   * @returns {Object} Returns `object`.
+   * @example
+   *
+   * _.forOwn({ '0': 'zero', '1': 'one', 'length': 2 }, function(num, key) {
+   *   alert(key);
+   * });
+   * // => alerts '0', '1', and 'length' (order is not guaranteed)
+   */
+  var forOwn = function (collection, callback) {
+    var index, iterable = collection, result = iterable;
+    if (!iterable) return result;
+    if (!objectTypes[typeof iterable]) return result;
+
+      for (index in iterable) {
+        if (hasOwnProperty.call(iterable, index)) {    
+        if (callback(iterable[index], index, collection) === indicatorObject) return result;    
+        }
+      }  
+    return result
+  };
 
   /**
    * Creates a sorted array of all enumerable properties, own and inherited,
@@ -940,7 +863,7 @@
    * // => true
    */
   function isDate(value) {
-    return value instanceof Date || toString.call(value) == dateClass;
+    return value ? (typeof value == 'object' && toString.call(value) == dateClass) : false;
   }
 
   /**
@@ -1010,8 +933,8 @@
    * @param {Mixed} b The other value to compare.
    * @param {Function} [callback] The function to customize comparing values.
    * @param {Mixed} [thisArg] The `this` binding of `callback`.
-   * @param- {Array} [stackA=[]] Internally used track traversed `a` objects.
-   * @param- {Array} [stackB=[]] Internally used track traversed `b` objects.
+   * @param- {Array} [stackA=[]] Tracks traversed `a` objects.
+   * @param- {Array} [stackB=[]] Tracks traversed `b` objects.
    * @returns {Boolean} Returns `true`, if the values are equivalent, else `false`.
    * @example
    *
@@ -1069,7 +992,7 @@
 
       case regexpClass:
       case stringClass:
-        return a == b + '';
+        return a == String(b);
     }
     var isArr = className == arrayClass;
     if (!isArr) {
@@ -1185,7 +1108,7 @@
   // fallback for older versions of Chrome and Safari
   if (isFunction(/x/)) {
     isFunction = function(value) {
-      return value instanceof Function || toString.call(value) == funcClass;
+      return typeof value == 'function' && toString.call(value) == funcClass;
     };
   }
 
@@ -1299,7 +1222,7 @@
    * // => true
    */
   function isRegExp(value) {
-    return value instanceof RegExp || toString.call(value) == regexpClass;
+    return value ? (objectTypes[typeof value] && toString.call(value) == regexpClass) : false;
   }
 
   /**
@@ -1363,11 +1286,11 @@
    * // => { 'name': 'moe' }
    */
   function omit(object) {
-    var props = concat.apply(arrayRef, arguments),
+    var props = concat.apply(arrayRef, nativeSlice.call(arguments, 1)),
         result = {};
 
     forIn(object, function(value, key) {
-      if (indexOf(props, key, 1) < 0) {
+      if (indexOf(props, key) < 0) {
         result[key] = value;
       }
     });
@@ -1427,8 +1350,8 @@
    * // => { 'name': 'moe' }
    */
   function pick(object) {
-    var index = 0,
-        props = concat.apply(arrayRef, arguments),
+    var index = -1,
+        props = concat.apply(arrayRef, nativeSlice.call(arguments, 1)),
         length = props.length,
         result = {};
 
@@ -1501,7 +1424,7 @@
     if (typeof length == 'number') {
       result = indexOf(collection, target) > -1;
     } else {
-      each(collection, function(value) {
+      forOwn(collection, function(value) {
         return (result = value === target) && indicatorObject;
       });
     }
@@ -1546,7 +1469,7 @@
     callback = createCallback(callback, thisArg);
 
     forEach(collection, function(value, key, collection) {
-      key = callback(value, key, collection) + '';
+      key = String(callback(value, key, collection));
       (hasOwnProperty.call(result, key) ? result[key]++ : result[key] = 1);
     });
     return result;
@@ -1597,17 +1520,17 @@
     var result = true;
     callback = createCallback(callback, thisArg);
 
-    if (isArray(collection)) {
-      var index = -1,
-          length = collection.length;
+    var index = -1,
+        length = collection ? collection.length : 0;
 
+    if (typeof length == 'number') {
       while (++index < length) {
         if (!(result = !!callback(collection[index], index, collection))) {
           break;
         }
       }
     } else {
-      each(collection, function(value, index, collection) {
+      forOwn(collection, function(value, index, collection) {
         return !(result = !!callback(value, index, collection)) && indicatorObject;
       });
     }
@@ -1658,10 +1581,10 @@
     var result = [];
     callback = createCallback(callback, thisArg);
 
-    if (isArray(collection)) {
-      var index = -1,
-          length = collection.length;
+    var index = -1,
+        length = collection ? collection.length : 0;
 
+    if (typeof length == 'number') {
       while (++index < length) {
         var value = collection[index];
         if (callback(value, index, collection)) {
@@ -1669,7 +1592,7 @@
         }
       }
     } else {
-      each(collection, function(value, index, collection) {
+      forOwn(collection, function(value, index, collection) {
         if (callback(value, index, collection)) {
           result.push(value);
         }
@@ -1699,41 +1622,76 @@
    *  iteration. If a property name or object is passed, it will be used to create
    *  a "_.pluck" or "_.where" style callback, respectively.
    * @param {Mixed} [thisArg] The `this` binding of `callback`.
-   * @returns {Mixed} Returns the element that passed the callback check,
-   *  else `undefined`.
+   * @returns {Mixed} Returns the found element, else `undefined`.
    * @example
    *
-   * var even = _.find([1, 2, 3, 4, 5, 6], function(num) { return num % 2 == 0; });
+   * _.find([1, 2, 3, 4], function(num) {
+   *   return num % 2 == 0;
+   * });
    * // => 2
    *
    * var food = [
    *   { 'name': 'apple',  'organic': false, 'type': 'fruit' },
    *   { 'name': 'banana', 'organic': true,  'type': 'fruit' },
-   *   { 'name': 'beet',   'organic': false, 'type': 'vegetable' },
-   *   { 'name': 'carrot', 'organic': true,  'type': 'vegetable' }
+   *   { 'name': 'beet',   'organic': false, 'type': 'vegetable' }
    * ];
    *
    * // using "_.where" callback shorthand
-   * var veggie = _.find(food, { 'type': 'vegetable' });
+   * _.find(food, { 'type': 'vegetable' });
    * // => { 'name': 'beet', 'organic': false, 'type': 'vegetable' }
    *
    * // using "_.pluck" callback shorthand
-   * var healthy = _.find(food, 'organic');
+   * _.find(food, 'organic');
    * // => { 'name': 'banana', 'organic': true, 'type': 'fruit' }
    */
   function find(collection, callback, thisArg) {
-    var result;
     callback = createCallback(callback, thisArg);
 
-    forEach(collection, function(value, index, collection) {
-      if (callback(value, index, collection)) {
-        result = value;
-        return indicatorObject;
+    var index = -1,
+        length = collection ? collection.length : 0;
+
+    if (typeof length == 'number') {
+      while (++index < length) {
+        var value = collection[index];
+        if (callback(value, index, collection)) {
+          return value;
+        }
       }
-    });
-    return result;
+    } else {
+      var result;
+      forOwn(collection, function(value, index, collection) {
+        if (callback(value, index, collection)) {
+          result = value;
+          return indicatorObject;
+        }
+      });
+      return result;
+    }
   }
 
+  /**
+   * Examines each element in a `collection`, returning the first that
+   * has the given `properties`. When checking `properties`, this method
+   * performs a deep comparison between values to determine if they are
+   * equivalent to each other.
+   *
+   * @static
+   * @memberOf _
+   * @category Collections
+   * @param {Array|Object|String} collection The collection to iterate over.
+   * @param {Object} properties The object of property values to filter by.
+   * @returns {Mixed} Returns the found element, else `undefined`.
+   * @example
+   *
+   * var food = [
+   *   { 'name': 'apple',  'organic': false, 'type': 'fruit' },
+   *   { 'name': 'banana', 'organic': true,  'type': 'fruit' },
+   *   { 'name': 'beet',   'organic': false, 'type': 'vegetable' }
+   * ];
+   *
+   * _.findWhere(food, { 'type': 'vegetable' });
+   * // => { 'name': 'beet', 'organic': false, 'type': 'vegetable' }
+   */
   function findWhere(object, properties) {
     return where(object, properties, true);
   }
@@ -1761,17 +1719,18 @@
    * // => alerts each number value (order is not guaranteed)
    */
   function forEach(collection, callback, thisArg) {
-    if (callback && typeof thisArg == 'undefined' && isArray(collection)) {
-      var index = -1,
-          length = collection.length;
+    var index = -1,
+        length = collection ? collection.length : 0;
 
+    callback = callback && typeof thisArg == 'undefined' ? callback : createCallback(callback, thisArg);
+    if (typeof length == 'number') {
       while (++index < length) {
         if (callback(collection[index], index, collection) === indicatorObject) {
           break;
         }
       }
     } else {
-      each(collection, callback, thisArg);
+      forOwn(collection, callback);
     };
   }
 
@@ -1814,7 +1773,7 @@
     callback = createCallback(callback, thisArg);
 
     forEach(collection, function(value, key, collection) {
-      key = callback(value, key, collection) + '';
+      key = String(callback(value, key, collection));
       (hasOwnProperty.call(result, key) ? result[key] : result[key] = []).push(value);
     });
     return result;
@@ -1843,7 +1802,7 @@
    * // => [['1', '2', '3'], ['4', '5', '6']]
    */
   function invoke(collection, methodName) {
-    var args = slice(arguments, 2),
+    var args = nativeSlice.call(arguments, 2),
         index = -1,
         isFunc = typeof methodName == 'function',
         length = collection ? collection.length : 0,
@@ -1896,16 +1855,17 @@
    */
   function map(collection, callback, thisArg) {
     var index = -1,
-        length = collection ? collection.length : 0,
-        result = Array(typeof length == 'number' ? length : 0);
+        length = collection ? collection.length : 0;
 
     callback = createCallback(callback, thisArg);
-    if (isArray(collection)) {
+    if (typeof length == 'number') {
+      var result = Array(length);
       while (++index < length) {
         result[index] = callback(collection[index], index, collection);
       }
     } else {
-      each(collection, function(value, key, collection) {
+      result = [];
+      forOwn(collection, function(value, key, collection) {
         result[++index] = callback(value, key, collection);
       });
     }
@@ -1955,10 +1915,10 @@
     var computed = -Infinity,
         result = computed;
 
-    if (!callback && isArray(collection)) {
-      var index = -1,
-          length = collection.length;
+    var index = -1,
+        length = collection ? collection.length : 0;
 
+    if (!callback && typeof length == 'number') {
       while (++index < length) {
         var value = collection[index];
         if (value > result) {
@@ -1968,7 +1928,7 @@
     } else {
       callback = createCallback(callback, thisArg);
 
-      each(collection, function(value, index, collection) {
+      forEach(collection, function(value, index, collection) {
         var current = callback(value, index, collection);
         if (current > computed) {
           computed = current;
@@ -2022,10 +1982,10 @@
     var computed = Infinity,
         result = computed;
 
-    if (!callback && isArray(collection)) {
-      var index = -1,
-          length = collection.length;
+    var index = -1,
+        length = collection ? collection.length : 0;
 
+    if (!callback && typeof length == 'number') {
       while (++index < length) {
         var value = collection[index];
         if (value < result) {
@@ -2035,7 +1995,7 @@
     } else {
       callback = createCallback(callback, thisArg);
 
-      each(collection, function(value, index, collection) {
+      forEach(collection, function(value, index, collection) {
         var current = callback(value, index, collection);
         if (current < computed) {
           computed = current;
@@ -2066,10 +2026,21 @@
    * _.pluck(stooges, 'name');
    * // => ['moe', 'larry']
    */
-  var pluck = map;
+  function pluck(collection, property) {
+    var index = -1,
+        length = collection ? collection.length : 0;
+
+    if (typeof length == 'number') {
+      var result = Array(length);
+      while (++index < length) {
+        result[index] = collection[index][property];
+      }
+    }
+    return result || map(collection, property);
+  }
 
   /**
-   * Reduces a `collection` to a value that is the accumulated result of running
+   * Reduces a `collection` to a value which is the accumulated result of running
    * each element in the `collection` through the `callback`, where each successive
    * `callback` execution consumes the return value of the previous execution.
    * If `accumulator` is not passed, the first element of the `collection` will be
@@ -2099,13 +2070,14 @@
    * // => { 'a': 3, 'b': 6, 'c': 9 }
    */
   function reduce(collection, callback, accumulator, thisArg) {
+    if (!collection) return accumulator;
     var noaccum = arguments.length < 3;
     callback = createCallback(callback, thisArg, 4);
 
-    if (isArray(collection)) {
-      var index = -1,
-          length = collection.length;
+    var index = -1,
+        length = collection.length;
 
+    if (typeof length == 'number') {
       if (noaccum) {
         accumulator = collection[++index];
       }
@@ -2113,7 +2085,7 @@
         accumulator = callback(accumulator, collection[index], index, collection);
       }
     } else {
-      each(collection, function(value, index, collection) {
+      forOwn(collection, function(value, index, collection) {
         accumulator = noaccum
           ? (noaccum = false, value)
           : callback(accumulator, value, index, collection)
@@ -2304,17 +2276,17 @@
     var result;
     callback = createCallback(callback, thisArg);
 
-    if (isArray(collection)) {
-      var index = -1,
-          length = collection.length;
+    var index = -1,
+        length = collection ? collection.length : 0;
 
+    if (typeof length == 'number') {
       while (++index < length) {
         if ((result = callback(collection[index], index, collection))) {
           break;
         }
       }
     } else {
-      each(collection, function(value, index, collection) {
+      forOwn(collection, function(value, index, collection) {
         return (result = callback(value, index, collection)) && indicatorObject;
       });
     }
@@ -2392,8 +2364,11 @@
    * // => [2, 3, 4]
    */
   function toArray(collection) {
+    if (isArray(collection)) {
+      return nativeSlice.call(collection);
+    }
     if (collection && typeof collection.length == 'number') {
-      return slice(collection);
+      return map(collection);
     }
     return values(collection);
   }
@@ -2476,12 +2451,12 @@
   function difference(array) {
     var index = -1,
         length = array.length,
-        flattened = concat.apply(arrayRef, arguments),
+        flattened = concat.apply(arrayRef, nativeSlice.call(arguments, 1)),
         result = [];
 
     while (++index < length) {
-      var value = array[index]
-      if (indexOf(flattened, value, length) < 0) {
+      var value = array[index];
+      if (indexOf(flattened, value) < 0) {
         result.push(value);
       }
     }
@@ -2562,14 +2537,14 @@
           return array[0];
         }
       }
-      return slice(array, 0, nativeMin(nativeMax(0, n), length));
+      return nativeSlice.call(array, 0, nativeMin(nativeMax(0, n), length));
     }
   }
 
   /**
    * Flattens a nested array (the nesting can be to any depth). If `isShallow`
    * is truthy, `array` will only be flattened a single level. If `callback`
-   * is passed, each element of `array` is passed through a callback` before
+   * is passed, each element of `array` is passed through a `callback` before
    * flattening. The `callback` is bound to `thisArg` and invoked with three
    * arguments; (value, index, array).
    *
@@ -2583,7 +2558,7 @@
    * @static
    * @memberOf _
    * @category Arrays
-   * @param {Array} array The array to compact.
+   * @param {Array} array The array to flatten.
    * @param {Boolean} [isShallow=false] A flag to indicate only flattening a single level.
    * @param {Function|Object|String} [callback=identity] The function called per
    *  iteration. If a property name or object is passed, it will be used to create
@@ -2737,7 +2712,7 @@
     } else {
       n = (callback == null || thisArg) ? 1 : callback || n;
     }
-    return slice(array, 0, nativeMin(nativeMax(0, length - n), length));
+    return nativeSlice.call(array, 0, nativeMin(nativeMax(0, length - n), length));
   }
 
   /**
@@ -2852,7 +2827,7 @@
           return array[length - 1];
         }
       }
-      return slice(array, nativeMax(0, length - n));
+      return nativeSlice.call(array, nativeMax(0, length - n));
     }
   }
 
@@ -3009,7 +2984,7 @@
     } else {
       n = (callback == null || thisArg) ? 1 : nativeMax(0, callback);
     }
-    return slice(array, n);
+    return nativeSlice.call(array, n);
   }
 
   /**
@@ -3029,7 +3004,7 @@
    * @static
    * @memberOf _
    * @category Arrays
-   * @param {Array} array The array to iterate over.
+   * @param {Array} array The array to inspect.
    * @param {Mixed} value The value to evaluate.
    * @param {Function|Object|String} [callback=identity] The function called per
    *  iteration. If a property name or object is passed, it will be used to create
@@ -3092,7 +3067,10 @@
    * _.union([1, 2, 3], [101, 2, 1, 10], [2, 1]);
    * // => [1, 2, 3, 101, 10]
    */
-  function union() {
+  function union(array) {
+    if (!isArray(array)) {
+      arguments[0] = array ? nativeSlice.call(array) : arrayRef;
+    }
     return uniq(concat.apply(arrayRef, arguments));
   }
 
@@ -3100,7 +3078,7 @@
    * Creates a duplicate-value-free version of the `array` using strict equality
    * for comparisons, i.e. `===`. If the `array` is already sorted, passing `true`
    * for `isSorted` will run a faster algorithm. If `callback` is passed, each
-   * element of `array` is passed through a callback` before uniqueness is computed.
+   * element of `array` is passed through a `callback` before uniqueness is computed.
    * The `callback` is bound to `thisArg` and invoked with three arguments; (value, index, array).
    *
    * If a property name is passed for `callback`, the created "_.pluck" style
@@ -3187,17 +3165,7 @@
    * // => [2, 3, 4]
    */
   function without(array) {
-    var index = -1,
-        length = array.length,
-        result = [];
-
-    while (++index < length) {
-      var value = array[index]
-      if (indexOf(arguments, value, 1) < 0) {
-        result.push(value);
-      }
-    }
-    return result
+    return difference(array, nativeSlice.call(arguments, 1));
   }
 
   /**
@@ -3264,9 +3232,11 @@
   /*--------------------------------------------------------------------------*/
 
   /**
-   * Creates a function that is restricted to executing `func` only after it is
-   * called `n` times. The `func` is executed with the `this` binding of the
-   * created function.
+   * If `n` is greater than `0`, a function is created that is restricted to
+   * executing `func`, with the `this` binding and arguments of the created
+   * function, only after it is called `n` times. If `n` is less than `1`,
+   * `func` is executed immediately, without a `this` binding or additional
+   * arguments, and its result is returned.
    *
    * @static
    * @memberOf _
@@ -3321,7 +3291,7 @@
     // (in V8 `Function#bind` is slower except when partially applied)
     return support.fastBind || (nativeBind && arguments.length > 2)
       ? nativeBind.call.apply(nativeBind, arguments)
-      : createBound(func, thisArg, slice(arguments, 2));
+      : createBound(func, thisArg, nativeSlice.call(arguments, 2));
   }
 
   /**
@@ -3348,8 +3318,8 @@
    * // => alerts 'clicked docs', when the button is clicked
    */
   function bindAll(object) {
-    var funcs = concat.apply(arrayRef, arguments),
-        index = funcs.length > 1 ? 0 : (funcs = functions(object), -1),
+    var funcs = arguments.length > 1 ? concat.apply(arrayRef, nativeSlice.call(arguments, 1)) : functions(object),
+        index = -1,
         length = funcs.length;
 
     while (++index < length) {
@@ -3397,6 +3367,8 @@
    * If `func` is an object, the created callback will return `true` for elements
    * that contain the equivalent object properties, otherwise it will return `false`.
    *
+   * Note: All Lo-Dash methods, that accept a `callback` argument, use `_.createCallback`.
+   *
    * @static
    * @memberOf _
    * @category Functions
@@ -3421,6 +3393,19 @@
    *
    * _.filter(stooges, 'age__gt45');
    * // => [{ 'name': 'larry', 'age': 50 }]
+   *
+   * // create mixins with support for "_.pluck" and "_.where" callback shorthands
+   * _.mixin({
+   *   'toLookup': function(collection, callback, thisArg) {
+   *     callback = _.createCallback(callback, thisArg);
+   *     return _.reduce(collection, function(result, value, index, collection) {
+   *       return (result[callback(value, index, collection)] = value, result);
+   *     }, {});
+   *   }
+   * });
+   *
+   * _.toLookup(stooges, 'name');
+   * // => { 'moe': { 'name': 'moe', 'age': 40 }, 'larry': { 'name': 'larry', 'age': 50 } }
    */
   function createCallback(func, thisArg, argCount) {
     if (func == null) {
@@ -3471,22 +3456,32 @@
   /**
    * Creates a function that will delay the execution of `func` until after
    * `wait` milliseconds have elapsed since the last time it was invoked. Pass
-   * `true` for `immediate` to cause debounce to invoke `func` on the leading,
-   * instead of the trailing, edge of the `wait` timeout. Subsequent calls to
-   * the debounced function will return the result of the last `func` call.
+   * an `options` object to indicate that `func` should be invoked on the leading
+   * and/or trailing edge of the `wait` timeout. Subsequent calls to the debounced
+   * function will return the result of the last `func` call.
+   *
+   * Note: If `leading` and `trailing` options are `true`, `func` will be called
+   * on the trailing edge of the timeout only if the the debounced function is
+   * invoked more than once during the `wait` timeout.
    *
    * @static
    * @memberOf _
    * @category Functions
    * @param {Function} func The function to debounce.
    * @param {Number} wait The number of milliseconds to delay.
-   * @param {Boolean} immediate A flag to indicate execution is on the leading
-   *  edge of the timeout.
+   * @param {Object} options The options object.
+   *  [leading=false] A boolean to specify execution on the leading edge of the timeout.
+   *  [trailing=true] A boolean to specify execution on the trailing edge of the timeout.
    * @returns {Function} Returns the new debounced function.
    * @example
    *
    * var lazyLayout = _.debounce(calculateLayout, 300);
    * jQuery(window).on('resize', lazyLayout);
+   *
+   * jQuery('#postbox').on('click', _.debounce(sendMail, 200, {
+   *   'leading': true,
+   *   'trailing': false
+   * });
    */
   function debounce(func, wait, immediate) {
     var args,
@@ -3531,7 +3526,7 @@
    * // returns from the function before `alert` is called
    */
   function defer(func) {
-    var args = slice(arguments, 1);
+    var args = nativeSlice.call(arguments, 1);
     return setTimeout(function() { func.apply(undefined, args); }, 1);
   }
 
@@ -3553,7 +3548,7 @@
    * // => 'logged later' (Appears after one second.)
    */
   function delay(func, wait) {
-    var args = slice(arguments, 2);
+    var args = nativeSlice.call(arguments, 2);
     return setTimeout(function() { func.apply(undefined, args); }, wait);
   }
 
@@ -3579,7 +3574,7 @@
   function memoize(func, resolver) {
     var cache = {};
     return function() {
-      var key = (resolver ? resolver.apply(this, arguments) : arguments[0]) + '';
+      var key = keyPrefix + (resolver ? resolver.apply(this, arguments) : arguments[0]);
       return hasOwnProperty.call(cache, key)
         ? cache[key]
         : (cache[key] = func.apply(this, arguments));
@@ -3639,26 +3634,37 @@
    * // => 'hi moe'
    */
   function partial(func) {
-    return createBound(func, slice(arguments, 1));
+    return createBound(func, nativeSlice.call(arguments, 1));
   }
 
   /**
-   * Creates a function that, when executed, will only call the `func`
-   * function at most once per every `wait` milliseconds. If the throttled
-   * function is invoked more than once during the `wait` timeout, `func` will
-   * also be called on the trailing edge of the timeout. Subsequent calls to the
-   * throttled function will return the result of the last `func` call.
+   * Creates a function that, when executed, will only call the `func` function
+   * at most once per every `wait` milliseconds. Pass an `options` object to
+   * indicate that `func` should be invoked on the leading and/or trailing edge
+   * of the `wait` timeout. Subsequent calls to the throttled function will
+   * return the result of the last `func` call.
+   *
+   * Note: If `leading` and `trailing` options are `true`, `func` will be called
+   * on the trailing edge of the timeout only if the the throttled function is
+   * invoked more than once during the `wait` timeout.
    *
    * @static
    * @memberOf _
    * @category Functions
    * @param {Function} func The function to throttle.
    * @param {Number} wait The number of milliseconds to throttle executions to.
+   * @param {Object} options The options object.
+   *  [leading=true] A boolean to specify execution on the leading edge of the timeout.
+   *  [trailing=true] A boolean to specify execution on the trailing edge of the timeout.
    * @returns {Function} Returns the new throttled function.
    * @example
    *
    * var throttled = _.throttle(updatePosition, 100);
    * jQuery(window).on('scroll', throttled);
+   *
+   * jQuery('.interactive').on('click', _.throttle(renewToken, 300000, {
+   *   'trailing': false
+   * }));
    */
   function throttle(func, wait) {
     var args,
@@ -3738,7 +3744,7 @@
    * // => 'Moe, Larry &amp; Curly'
    */
   function escape(string) {
-    return string == null ? '' : (string + '').replace(reUnescapedHtml, escapeHtmlChar);
+    return string == null ? '' : String(string).replace(reUnescapedHtml, escapeHtmlChar);
   }
 
   /**
@@ -3885,9 +3891,6 @@
    * Note: In the development build, `_.template` utilizes sourceURLs for easier
    * debugging. See http://www.html5rocks.com/en/tutorials/developertools/sourcemaps/#toc-sourceurl
    *
-   * Note: Lo-Dash may be used in Chrome extensions by either creating a `lodash csp`
-   * build and using precompiled templates, or loading Lo-Dash in a sandbox.
-   *
    * For more information on precompiling templates see:
    * http://lodash.com/#custom-builds
    *
@@ -3898,7 +3901,7 @@
    * @memberOf _
    * @category Utilities
    * @param {String} text The template text.
-   * @param {Obect} data The data object used to populate the text.
+   * @param {Object} data The data object used to populate the text.
    * @param {Object} options The options object.
    *  escape - The "escape" delimiter regexp.
    *  evaluate - The "evaluate" delimiter regexp.
@@ -4047,7 +4050,7 @@
   }
 
   /**
-   * The opposite of `_.escape`, this method converts the HTML entities
+   * The inverse of `_.escape`, this method converts the HTML entities
    * `&amp;`, `&lt;`, `&gt;`, `&quot;`, and `&#39;` in `string` to their
    * corresponding characters.
    *
@@ -4062,7 +4065,7 @@
    * // => 'Moe, Larry & Curly'
    */
   function unescape(string) {
-    return string == null ? '' : (string + '').replace(reEscapedHtml, unescapeHtmlChar);
+    return string == null ? '' : String(string).replace(reEscapedHtml, unescapeHtmlChar);
   }
 
   /**
@@ -4175,7 +4178,7 @@
    * // => '1,2,3'
    */
   function wrapperToString() {
-    return this.__wrapped__ + '';
+    return String(this.__wrapped__);
   }
 
   /**
@@ -4329,7 +4332,7 @@
    * @memberOf _
    * @type String
    */
-  lodash.VERSION = '1.0.1';
+  lodash.VERSION = '1.2.1';
 
   // add functions to `lodash.prototype`
   mixin(lodash);
@@ -4338,40 +4341,56 @@
   lodash.prototype.chain = wrapperChain;
   lodash.prototype.value = wrapperValueOf;
 
-  // add `Array` mutator functions to the wrapper
-  each(['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'], function(methodName) {
-    var func = arrayRef[methodName];
-    lodash.prototype[methodName] = function() {
-      var value = this.__wrapped__;
-      func.apply(value, arguments);
+    // add `Array` mutator functions to the wrapper
+    forEach(['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'], function(methodName) {
+      var func = arrayRef[methodName];
+      lodash.prototype[methodName] = function() {
+        var value = this.__wrapped__;
+        func.apply(value, arguments);
 
-      // avoid array-like object bugs with `Array#shift` and `Array#splice`
-      // in Firefox < 10 and IE < 9
-      if (!support.spliceObjects && value.length === 0) {
-        delete value[0];
-      }
-      return this;
-    };
-  });
+        // avoid array-like object bugs with `Array#shift` and `Array#splice`
+        // in Firefox < 10 and IE < 9
+        if (!support.spliceObjects && value.length === 0) {
+          delete value[0];
+        }
+        return this;
+      };
+    });
 
-  // add `Array` accessor functions to the wrapper
-  each(['concat', 'join', 'slice'], function(methodName) {
-    var func = arrayRef[methodName];
-    lodash.prototype[methodName] = function() {
-      var value = this.__wrapped__,
-          result = func.apply(value, arguments);
+    // add `Array` accessor functions to the wrapper
+    forEach(['concat', 'join', 'slice'], function(methodName) {
+      var func = arrayRef[methodName];
+      lodash.prototype[methodName] = function() {
+        var value = this.__wrapped__,
+            result = func.apply(value, arguments);
 
-      if (this.__chain__) {
-        result = new lodashWrapper(result);
-        result.__chain__ = true;
-      }
-      return result;
-    };
-  });
+        if (this.__chain__) {
+          result = new lodashWrapper(result);
+          result.__chain__ = true;
+        }
+        return result;
+      };
+    });
 
   /*--------------------------------------------------------------------------*/
 
-  if (freeExports && !freeExports.nodeType) {
+  // expose Lo-Dash
+  // some AMD build optimizers, like r.js, check for specific condition patterns like the following:
+  if (typeof define == 'function' && typeof define.amd == 'object' && define.amd) {
+    // Expose Lo-Dash to the global object even when an AMD loader is present in
+    // case Lo-Dash was injected by a third-party script and not intended to be
+    // loaded as a module. The global assignment can be reverted in the Lo-Dash
+    // module via its `noConflict()` method.
+    window._ = lodash;
+
+    // define as an anonymous module so, through path mapping, it can be
+    // referenced as the "underscore" module
+    define(function() {
+      return lodash;
+    });
+  }
+  // check for `exports` after `define` in case a build optimizer adds an `exports` object
+  else if (freeExports && !freeExports.nodeType) {
     // in Node.js or RingoJS v0.8.0+
     if (freeModule) {
       (freeModule.exports = lodash)._ = lodash;

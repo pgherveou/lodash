@@ -1,17 +1,29 @@
 ;(function(window, undefined) {
   'use strict';
 
+  /** Method and object shortcuts */
+  var document = window.document,
+      amd = window.define && define.amd,
+      body = document && document.body,
+      create = Object.create,
+      freeze = Object.freeze,
+      phantom = window.phantom,
+      process = window.process,
+      slice = Array.prototype.slice,
+      system = window.system,
+      toString = Object.prototype.toString;
+
   /** Use a single "load" function */
   var load = typeof require == 'function' ? require : window.load;
 
   /** The file path of the Lo-Dash file to test */
   var filePath = (function() {
     var min = 0;
-    var result = window.phantom
+    var result = phantom
       ? phantom.args
-      : (window.system
+      : (system
           ? (min = 1, system.args)
-          : (window.process ? (min = 2, process.argv) : (window.arguments || []))
+          : (process ? (min = 2, process.argv) : (window.arguments || []))
         );
 
     var last = result[result.length - 1];
@@ -43,19 +55,11 @@
   }());
 
   /** The `lodash` function to test */
-  var _ =
-    window._ || (
-      _ = load(filePath) || window._,
-      _ = _._ || _,
-      _.runInContext(window)
-    );
-
-  /** The `platform` object to check */
-  var platform = (
-    window.platform ||
-    load('../vendor/platform.js/platform.js') ||
-    window.platform
-  );
+  var _ = window._ || (window._ = (
+    _ = load(filePath) || window._,
+    _ = _._ || _,
+    _.runInContext(window)
+  ));
 
   /** Used to pass falsey values to methods */
   var falsey = [
@@ -68,9 +72,6 @@
     undefined
   ];
 
-  /** Shortcut used to make object properties immutable */
-  var freeze = Object.freeze;
-
   /** Used to set property descriptors */
   var setDescriptor = (function() {
     try {
@@ -80,9 +81,6 @@
     } catch(e) { }
     return result;
   }());
-
-  /** Shortcut used to convert array-like objects to arrays */
-  var slice = Array.prototype.slice;
 
   /** Used to check problem JScript properties (a.k.a. the [[DontEnum]] bug) */
   var shadowedProps = [
@@ -117,14 +115,13 @@
 
   // add object from iframe
   (function() {
-    if (!window.document || window.phantom) {
+    if (!document || phantom) {
       return;
     }
-    var body = document.body,
-        iframe = document.createElement('iframe');
-
+    var iframe = document.createElement('iframe');
     iframe.frameBorder = iframe.height = iframe.width = 0;
     body.appendChild(iframe);
+
     var idoc = (idoc = iframe.contentDocument || iframe.contentWindow).document || idoc;
     idoc.write("<script>parent._._object = { 'a': 1, 'b': 2, 'c': 3 };<\/script>");
     idoc.close();
@@ -138,7 +135,7 @@
 
   (function() {
     test('supports loading ' + basename + ' as the "lodash" module', function() {
-      if (window.define && define.amd) {
+      if (amd) {
         equal((lodashModule || {}).moduleName, 'lodash');
       } else {
         skipTest();
@@ -146,7 +143,7 @@
     });
 
     test('supports loading ' + basename + ' with the Require.js "shim" configuration option', function() {
-      if (window.define && define.amd) {
+      if (amd) {
         equal((shimmedModule || {}).moduleName, 'shimmed');
       } else {
         skipTest();
@@ -154,7 +151,7 @@
     });
 
     test('supports loading ' + basename + ' as the "underscore" module', function() {
-      if (window.define && define.amd) {
+      if (amd) {
         equal((underscoreModule || {}).moduleName, 'underscore');
       } else {
         skipTest();
@@ -162,7 +159,7 @@
     });
 
     test('avoids overwritten native methods', function() {
-      if (window.document && !window.phantom) {
+      if (document && !phantom) {
         notDeepEqual(lodashBadShim.keys({ 'a': 1 }), []);
       } else {
         skipTest();
@@ -204,6 +201,8 @@
   QUnit.module('lodash.at');
 
   (function() {
+    var args = arguments;
+
     test('should return `undefined` for nonexistent keys', function() {
       var actual = _.at(['a', 'b',  'c'], [0, 2, 4]);
       deepEqual(actual, ['a', 'c', undefined]);
@@ -216,6 +215,11 @@
     test('should accept multiple key arguments', function() {
       var actual = _.at(['a', 'b', 'c', 'd'], 0, 2, 3);
       deepEqual(actual, ['a', 'c', 'd']);
+    });
+
+    test('should work with an `arguments` object for `collection`', function() {
+      var actual = _.at(args, [0, 2]);
+      deepEqual(actual, ['a', 'c']);
     });
 
     test('should work with an object for `collection`', function() {
@@ -232,7 +236,7 @@
         deepEqual(_.at(collection, [0, 2]), ['a', 'c']);
       });
     });
-  }());
+  }('a', 'b', 'c'));
 
   /*--------------------------------------------------------------------------*/
 
@@ -252,6 +256,10 @@
           bound = _.bind(func, {});
 
       ok(new bound instanceof func);
+    });
+
+    test('should throw a TypeError if `func` is not a function', function() {
+      raises(function() { _.bind(); }, TypeError);
     });
   }());
 
@@ -299,6 +307,12 @@
 
       deepEqual(actual, [1, 2, 3, undefined]);
     });
+
+    test('should work with an array `object` argument', function() {
+      var array = ['push', 'pop'];
+      _.bindAll(array);
+      equal(array.pop, Array.prototype.pop);
+    });
   }());
 
   /*--------------------------------------------------------------------------*/
@@ -333,12 +347,12 @@
     Klass.prototype = { 'b': 1 };
 
     var nonCloneable = {
-      'an element': window.document && document.body,
+      'an element': body,
       'a function': Klass
     };
 
     var objects = {
-      'an arguments object': arguments,
+      'an `arguments` object': arguments,
       'an array': ['a', 'b', 'c', ''],
       'an array-like-object': { '0': 'a', '1': 'b', '2': 'c',  '3': '', 'length': 5 },
       'boolean': false,
@@ -511,18 +525,92 @@
 
   (function() {
     test('subsequent "immediate" debounced calls return the last `func` result', function() {
-      var debounced = _.debounce(function(value) { return value; }, 32, true),
+      var debounced = _.debounce(_.identity, 32, true),
           result = [debounced('x'), debounced('y')];
 
       deepEqual(result, ['x', 'x']);
     });
 
     asyncTest('subsequent debounced calls return the last `func` result', function() {
-      var debounced = _.debounce(function(value) { return value; }, 32);
+      var debounced = _.debounce(_.identity, 32);
       debounced('x');
 
       setTimeout(function() {
         equal(debounced('y'), 'x');
+        QUnit.start();
+      }, 64);
+    });
+
+    asyncTest('should apply default options correctly', function() {
+      var count = 0;
+
+      var debounced = _.debounce(function(value) {
+        count++;
+        return value;
+      }, 32, {});
+
+      strictEqual(debounced('x'), undefined);
+
+      setTimeout(function() {
+        strictEqual(count, 1);
+        QUnit.start();
+      }, 64);
+    });
+
+    asyncTest('should work with `leading` option', function() {
+      var withLeadingAndTrailing,
+          counts = [0, 0, 0];
+
+      _.each([true, { 'leading': true }], function(options, index) {
+        var debounced = _.debounce(function(value) {
+          counts[index]++;
+          return value;
+        }, 32, options);
+
+        if (index == 1) {
+          withLeadingAndTrailing = debounced;
+        }
+        equal(debounced('x'), 'x');
+      });
+
+      _.times(2, _.debounce(function() { counts[2]++; }, 32, { 'leading': true }));
+      strictEqual(counts[2], 1);
+
+      _.each([false, { 'leading': false }], function(options) {
+        var withoutLeading = _.debounce(_.identity, 32, options);
+        strictEqual(withoutLeading('x'), undefined);
+      });
+
+      setTimeout(function() {
+        deepEqual(counts, [1, 1, 2]);
+
+        withLeadingAndTrailing('x');
+        equal(counts[1], 2);
+
+        QUnit.start();
+      }, 64);
+    });
+
+    asyncTest('should work with `trailing` option', function() {
+      var withCount = 0,
+          withoutCount = 0;
+
+      var withTrailing = _.debounce(function(value) {
+        withCount++;
+        return value;
+      }, 32, { 'trailing': true });
+
+      var withoutTrailing = _.debounce(function(value) {
+        withoutCount++;
+        return value;
+      }, 32, { 'trailing': false });
+
+      strictEqual(withTrailing('x'), undefined);
+      strictEqual(withoutTrailing('x'), undefined);
+
+      setTimeout(function() {
+        strictEqual(withCount, 1);
+        strictEqual(withoutCount, 0);
         QUnit.start();
       }, 64);
     });
@@ -618,19 +706,21 @@
       deepEqual(func({}, new Foo), {});
     });
 
-    test('lodash.' + methodName + ' should treat sparse arrays as dense', function() {
-      var array = Array(3);
-      array[0] = 1;
-      array[2] = 3;
+    if (methodName == 'merge') {
+      test('lodash.' + methodName + ' should treat sparse arrays as dense', function() {
+        var array = Array(3);
+        array[0] = 1;
+        array[2] = 3;
 
-      var actual = func([], array),
-          expected = array.slice();
+        var actual = func([], array),
+            expected = array.slice();
 
-      expected[1] = undefined;
+        expected[1] = undefined;
 
-      ok(1 in actual);
-      deepEqual(actual, expected);
-    });
+        ok(1 in actual);
+        deepEqual(actual, expected);
+      });
+    }
   });
 
   /*--------------------------------------------------------------------------*/
@@ -679,8 +769,6 @@
 
   /*--------------------------------------------------------------------------*/
 
-  QUnit.module('lodash.find');
-
   (function() {
     var objects = [
       { 'a': 0, 'b': 0 },
@@ -688,20 +776,31 @@
       { 'a': 2, 'b': 2 }
     ];
 
-    test('should return found `value`', function() {
-      equal(_.find(objects, function(object) { return object.a == 1; }), objects[1]);
-    });
+    _.each({
+      'find': [objects[1], undefined, objects[2], objects[1]],
+      'findIndex': [1, -1, 2, 1],
+      'findKey': ['1', undefined, '2', '1']
+    },
+    function(expected, methodName) {
+      QUnit.module('lodash.' + methodName);
 
-    test('should return `undefined` if `value` is not found', function() {
-      equal(_.find(objects, function(object) { return object.a == 3; }), undefined);
-    });
+      var func = _[methodName];
 
-    test('should work with an object for `callback`', function() {
-      equal(_.find(objects, { 'b': 2 }), objects[2]);
-    });
+      test('should return the correct value', function() {
+        strictEqual(func(objects, function(object) { return object.a == 1; }), expected[0]);
+      });
 
-    test('should work with a string for `callback`', function() {
-      equal(_.find(objects, 'b'), objects[1]);
+      test('should return `' + expected[1] + '` if value is not found', function() {
+        strictEqual(func(objects, function(object) { return object.a == 3; }), expected[1]);
+      });
+
+      test('should work with an object for `callback`', function() {
+        strictEqual(func(objects, { 'b': 2 }), expected[2]);
+      });
+
+      test('should work with a string for `callback`', function() {
+        strictEqual(func(objects, 'b'), expected[3]);
+      });
     });
   }());
 
@@ -860,6 +959,20 @@
       equal(wrapper.forEach(Boolean), wrapper);
     });
 
+    test('supports the `thisArg` argument', function() {
+      var actual;
+
+      function callback(value, index) {
+        actual = this[index];
+      }
+
+      _.forEach([1], callback, [2]);
+      equal(actual, 2);
+
+      _.forEach({ 'a': 1 }, callback, { 'a': 2 });
+      equal(actual, 2);
+    });
+
     _.each({
       'literal': 'abc',
       'object': Object('abc')
@@ -1001,12 +1114,21 @@
 
     test('lodash.' + methodName + ' should pass the correct `callback` arguments', function() {
       var args;
-
       func({ 'a': 1 }, { 'a': 2 }, function() {
         args || (args = slice.call(arguments));
       });
 
-      deepEqual(args, [1, 2]);
+      deepEqual(args, [1, 2], 'primitive property values');
+
+      var array = [1, 2],
+          object = { 'b': 2 };
+
+      args = null;
+      func({ 'a': array }, { 'a': object }, function() {
+        args || (args = slice.call(arguments));
+      });
+
+      deepEqual(args, [array, object], 'non-primitive property values');
     });
 
     test('lodash.' + methodName + ' should correct set the `this` binding', function() {
@@ -1052,6 +1174,36 @@
       equal(values.length, 1);
     });
   });
+
+  /*--------------------------------------------------------------------------*/
+
+  QUnit.module('`__proto__` property bugs');
+
+  (function() {
+    var stringLiteral = '__proto__',
+        stringObject = Object(stringLiteral),
+        expected = [stringLiteral, stringObject];
+
+    var array = _.times(100, function(count) {
+      return count % 2 ? stringObject : stringLiteral;
+    });
+
+    test('internal data objects should work with the `__proto__` key', function() {
+      deepEqual(_.difference(array, array), []);
+      deepEqual(_.intersection(array, array), expected);
+      deepEqual(_.uniq(array), expected);
+      deepEqual(_.without.apply(_, [array].concat(array)), []);
+    });
+
+    test('lodash.memoize should memoize values resolved to the `__proto__` key', function() {
+      var count = 0,
+          memoized = _.memoize(function() { return ++count; });
+
+      memoized('__proto__');
+      memoized('__proto__');
+      strictEqual(count, 1);
+    });
+  }());
 
   /*--------------------------------------------------------------------------*/
 
@@ -1217,7 +1369,7 @@
 
   (function() {
     test('should use strict equality in its duck type check', function() {
-      var element = window.document ? document.body : { 'nodeType': 1 };
+      var element = body || { 'nodeType': 1 };
       strictEqual(_.isElement(element), true);
 
       strictEqual(_.isElement({ 'nodeType': new Number(1) }), false);
@@ -1337,6 +1489,14 @@
         strictEqual(actual, false);
       });
     });
+
+    test('should ensure `callback` is a function', function() {
+      var array = [1, 2, 3],
+          eq = _.partial(_.isEqual, array),
+          actual = _.every([array, [1, 0, 3]], eq);
+
+      strictEqual(actual, false);
+    })
   }());
 
   /*--------------------------------------------------------------------------*/
@@ -1413,7 +1573,25 @@
       strictEqual(_.isPlainObject(new Foo(1)), false);
       strictEqual(_.isPlainObject([1, 2, 3]), false);
       strictEqual(_.isPlainObject({ 'a': 1 }), true);
+
+      if (create) {
+        strictEqual(_.isPlainObject(create(null)), true);
+      } else {
+        skipTest();
+      }
+      if (document) {
+        strictEqual(_.isPlainObject(body), false);
+      } else {
+        skipTest();
+      }
     });
+
+    test('should return `false` for Object objects without a [[Class]] of "Object"', function() {
+      strictEqual(_.isPlainObject(arguments), false);
+      strictEqual(_.isPlainObject(Error), false);
+      strictEqual(_.isPlainObject(Math), false);
+      strictEqual(_.isPlainObject(window), false);
+    })
   }());
 
   /*--------------------------------------------------------------------------*/
@@ -1449,7 +1627,7 @@
       equal(typeof func(true), expected);
       equal(typeof func(false), expected);
       equal(typeof func(new Date), expected);
-      equal(typeof func(window.document && document.body), expected);
+      equal(typeof func(body), expected);
       equal(typeof func({}), expected);
       equal(typeof func(undefined), expected);
       equal(typeof func(Infinity), expected);
@@ -1461,6 +1639,22 @@
       equal(typeof func('a'), expected);
     });
   });
+
+  (function() {
+    test('should return `false` for subclassed values', function() {
+      _.each(['isArray', 'isBoolean', 'isDate', 'isFunction', 'isNumber', 'isRegExp', 'isString'], function(methodName) {
+        function Foo() {}
+        Foo.prototype = window[methodName.slice(2)].prototype;
+
+        var object = new Foo;
+        if (toString.call(object) == '[object Object]') {
+          strictEqual(_[methodName](object), false, '_.' + methodName + ' returns `false`');
+        } else {
+          skipTest();
+        }
+      });
+    });
+  }());
 
   /*--------------------------------------------------------------------------*/
 
@@ -1745,8 +1939,27 @@
     });
 
     test('should handle merging if `callback` returns `undefined`', function() {
-      var actual = _.merge({ 'a': 1 }, { 'a': 2 }, function() { });
-      deepEqual(actual, { 'a': 2 });
+      var actual = _.merge({ 'a': { 'b': [1, 1] } }, { 'a': { 'b': [0] } }, function() { });
+      deepEqual(actual, { 'a': { 'b': [0, 1] } });
+    });
+
+    test('should defer to `callback` when it returns a value other than `undefined`', function() {
+      var actual = _.merge({ 'a': { 'b': [0, 1] } }, { 'a': { 'b': [2] } }, function(a, b) {
+        return _.isArray(a) ? a.concat(b) : undefined;
+      });
+      deepEqual(actual, { 'a': { 'b': [0, 1, 2] } });
+    });
+
+    test('should pass the correct values to `callback`', function() {
+      var argsList = [],
+          array = [1, 2],
+          object = { 'b': 2 };
+
+      _.merge({ 'a': array }, { 'a': object }, function(a, b) {
+        argsList.push(slice.call(arguments));
+      });
+
+      deepEqual(argsList, [[array, object], [undefined, 2]]);
     });
   }(1, 2, 3));
 
@@ -1775,6 +1988,10 @@
       Foo.prototype = object;
 
       deepEqual(_.omit(new Foo, 'a'), expected);
+    });
+
+    test('should work with an array `object` argument', function() {
+      deepEqual(_.omit([1, 2, 3], '0', '2'), { '1': 2 });
     });
 
     test('should work with a `callback` argument', function() {
@@ -1811,17 +2028,60 @@
 
   /*--------------------------------------------------------------------------*/
 
+  QUnit.module('lodash.once');
+
+  (function() {
+    test('should ignore recursive calls', function() {
+      var count = 0;
+
+      var func = _.once(function() {
+        count++;
+        func();
+      });
+
+      func();
+      strictEqual(count, 1);
+    });
+
+    test('should not throw more than once', function() {
+      var pass = true;
+
+      var func = _.once(function() {
+        throw new Error;
+      });
+
+      raises(function() { func(); }, Error);
+
+      try {
+        func();
+      } catch(e) {
+        pass = false;
+      }
+      ok(pass);
+    });
+  }());
+
+  /*--------------------------------------------------------------------------*/
+
   QUnit.module('lodash.parseInt');
 
   (function() {
-    test('should parse strings with leading zeros with a `radix` of 10 by default (test in Firefox and Opera)', function() {
+    test('should parse strings with leading whitespace and zeros with a `radix` of 10 by default (test in Chrome, Firefox, and Opera)', function() {
+      var whitespace = ' \x09\x0B\x0C\xA0\ufeff\x0A\x0D\u2028\u2029\u1680\u180e\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000';
       equal(_.parseInt('08'), 8);
+      equal(_.parseInt(whitespace + '08'), 8);
     });
 
-    test('should internally use a radix of 10 if `radix` is `undefined` or `0`', function() {
+    test('should use a radix of `10`, for non-hexadecimals, if `radix` is `undefined` or `0`', function() {
       equal(_.parseInt('10', 0), 10);
       equal(_.parseInt('10'), 10);
       equal(_.parseInt('10', undefined), 10);
+    });
+
+    test('should use a radix of `16`, for hexadecimals, if `radix` is `undefined` or `0`', function() {
+      equal(_.parseInt('0x20', 0), 32);
+      equal(_.parseInt('0x20'), 32);
+      equal(_.parseInt('0x20', undefined), 32);
     });
   }());
 
@@ -1899,6 +2159,10 @@
       Foo.prototype = object;
 
       deepEqual(_.pick(new Foo, 'b'), { 'b': 2 });
+    });
+
+    test('should work with an array `object` argument', function() {
+      deepEqual(_.pick([1, 2, 3], '1'), { '1': 2 });
     });
 
     test('should work with a `callback` argument', function() {
@@ -2532,52 +2796,124 @@
     });
 
     asyncTest('supports recursive calls', function() {
-      var counter = 0;
+      var count = 0;
       var throttled = _.throttle(function() {
-        counter++;
-        if (counter < 10) {
+        count++;
+        if (count < 10) {
           throttled();
         }
       }, 32);
 
       throttled();
-      equal(counter, 1);
+      equal(count, 1);
 
       setTimeout(function() {
-        ok(counter < 3)
+        ok(count < 3)
         QUnit.start();
       }, 32);
     });
 
     asyncTest('should not trigger a trailing call when invoked once', function() {
-      var counter = 0,
-          throttled = _.throttle(function() { counter++; }, 32);
+      var count = 0,
+          throttled = _.throttle(function() { count++; }, 32);
 
       throttled();
-      equal(counter, 1);
+      equal(count, 1);
 
       setTimeout(function() {
-        equal(counter, 1);
+        equal(count, 1);
         QUnit.start();
       }, 96);
     });
 
     asyncTest('should trigger trailing call when invoked repeatedly', function() {
-      var counter = 0,
+      var count = 0,
           limit = 48,
-          throttled = _.throttle(function() { counter++; }, 32),
+          throttled = _.throttle(function() { count++; }, 32),
           start = new Date;
 
       while ((new Date - start) < limit) {
         throttled();
       }
-      var lastCount = counter;
+      var lastCount = count;
       ok(lastCount > 1);
 
       setTimeout(function() {
-        ok(counter > lastCount);
+        ok(count > lastCount);
         QUnit.start();
       }, 96);
+    });
+
+    asyncTest('should apply default options correctly', function() {
+      var count = 0;
+
+      var throttled = _.throttle(function(value) {
+        count++;
+        return value;
+      }, 32, {});
+
+      _.times(2, function() {
+        equal(throttled('x'), 'x');
+      });
+
+      setTimeout(function() {
+        strictEqual(count, 2);
+        QUnit.start();
+      }, 64);
+    });
+
+    test('should work with `leading` option', function() {
+      _.each([true, { 'leading': true }], function(options) {
+        var withLeading = _.throttle(_.identity, 32, options);
+        equal(withLeading('x'), 'x');
+      });
+
+      _.each([false, { 'leading': false }], function(options) {
+        var withoutLeading = _.throttle(_.identity, 32, options);
+        strictEqual(withoutLeading('x'), undefined);
+      });
+    });
+
+    asyncTest('should work with `trailing` option', function() {
+      var withCount = 0,
+          withoutCount = 0;
+
+      var withTrailing = _.throttle(function(value) {
+        withCount++;
+        return value;
+      }, 32, { 'trailing': true });
+
+      var withoutTrailing = _.throttle(function(value) {
+        withoutCount++;
+        return value;
+      }, 32, { 'trailing': false });
+
+      _.times(2, function() {
+        equal(withTrailing('x'), 'x');
+        equal(withoutTrailing('x'), 'x');
+      });
+
+      setTimeout(function() {
+        equal(withCount, 2);
+        strictEqual(withoutCount, 1);
+        QUnit.start();
+      }, 64);
+    });
+
+    asyncTest('should not update `lastCalled`, at the end of the timeout, when `trailing` is `false`', function() {
+      var count = 0;
+
+      var throttled = _.throttle(function() {
+        count++;
+      }, 64, { 'trailing': false });
+
+      _.times(2, throttled);
+      setTimeout(function() { _.times(2, throttled); }, 100);
+
+      setTimeout(function() {
+        equal(count, 2);
+        QUnit.start();
+      }, 128);
     });
   }());
 
@@ -2611,10 +2947,9 @@
     });
 
     test('should work with a node list for `collection` (test in IE < 9)', function() {
-      if (window.document) {
+      if (document) {
         try {
           var nodeList = document.getElementsByTagName('body'),
-              body = nodeList[0],
               actual = _.toArray(nodeList);
         } catch(e) { }
         deepEqual(actual, [body]);
@@ -2676,6 +3011,19 @@
 
   /*--------------------------------------------------------------------------*/
 
+  QUnit.module('lodash.union');
+
+  (function() {
+    test('should produce correct results when passed a falsey `array` argument', function() {
+      var expected = [1, 2, 3],
+          actual = _.union(null, expected);
+
+      deepEqual(actual, expected);
+    });
+  }());
+
+  /*--------------------------------------------------------------------------*/
+
   QUnit.module('lodash.uniq');
 
   (function() {
@@ -2688,10 +3036,14 @@
     });
 
     test('should distinguish between numbers and numeric strings', function() {
-      var expected = ['2', 2, Object('2'), Object(2)],
-          actual = _.uniq(expected);
+      var array = [],
+          expected = ['2', 2, Object('2'), Object(2)];
 
-      deepEqual(actual, expected);
+      _.times(50, function() {
+        array.push.apply(array, expected);
+      });
+
+      deepEqual(_.uniq(expected), expected);
     });
 
     _.each({
@@ -2719,6 +3071,58 @@
     test('should coerce the prefix argument to a string', function() {
       var actual = [_.uniqueId(3), _.uniqueId(2), _.uniqueId(1)];
       ok(/3\d+,2\d+,1\d+/.test(actual));
+    });
+  }());
+
+  /*--------------------------------------------------------------------------*/
+
+  QUnit.module('lodash.unzip');
+
+  (function() {
+    var object = {
+      'an empty array': [
+        [],
+        []
+      ],
+      '0-tuples': [
+        [[], []],
+        []
+      ],
+      '1-tuples': [
+        [['moe'], ['larry']],
+        [['moe', 'larry']]
+      ],
+      '2-tuples': [
+        [['moe', 30], ['larry', 40]],
+        [['moe', 'larry'], [30, 40]]
+      ],
+      '3-tuples': [
+        [['moe', 30, true], ['larry', 40, false]],
+        [['moe', 'larry'], [30, 40], [true, false]]
+      ]
+    };
+
+    _.forOwn(object, function(pair, key) {
+      test('should work with ' + key, function() {
+        var actual = _.unzip(pair[0]);
+        deepEqual(actual, pair[1]);
+        deepEqual(_.zip.apply(_, actual), pair[1].length ? pair[0] : pair[1]);
+      });
+    });
+
+    test('should work with tuples of different lengths', function() {
+      var pair = [
+        [['moe', 30], ['larry', 40, false]],
+        [['moe', 'larry'], [30, 40], [undefined, false]]
+      ];
+
+      var actual = _.unzip(pair[0]);
+      ok(1 in actual);
+      deepEqual(actual, pair[1]);
+
+      actual = _.zip.apply(_, actual);
+      ok(2 in actual[0]);
+      deepEqual(actual, [['moe', 30, undefined], ['larry', 40, false]]);
     });
   }());
 
@@ -2936,6 +3340,37 @@
 
   /*--------------------------------------------------------------------------*/
 
+  QUnit.module('"Arrays" category methods');
+
+ (function() {
+    var args = arguments;
+
+    test('should work with `arguments` objects', function() {
+      function message(methodName) {
+        return '_.' + methodName + ' should work with `arguments` objects';
+      }
+
+      deepEqual(_.compact(args), [1, [3], 5], message('compact'));
+      deepEqual(_.difference(args, [null]), [1, [3], 5], message('difference'));
+      deepEqual(_.findIndex(args, _.identity), 0, message('findIndex'));
+      deepEqual(_.first(args), 1, message('first'));
+      deepEqual(_.flatten(args), [1, null, 3, null, 5], message('flatten'));
+      deepEqual(_.indexOf(args, 5), 4, message('indexOf'));
+      deepEqual(_.initial(args, 4), [1], message('initial'));
+      deepEqual(_.intersection(args, [1]), [1], message('intersection'));
+      deepEqual(_.last(args), 5, message('last'));
+      deepEqual(_.lastIndexOf(args, 1), 0, message('lastIndexOf'));
+      deepEqual(_.rest(args, 4), [5], message('rest'));
+      deepEqual(_.sortedIndex(args, 6), 5, message('sortedIndex'));
+      deepEqual(_.union(args, [null, 6]), [1, null, [3], 5, 6], message('union'));
+      deepEqual(_.uniq(args), [1, null, [3], 5], message('uniq'));
+      deepEqual(_.without(args, null), [1, [3], 5], message('without'));
+      deepEqual(_.zip(args, args), [[1, 1], [null, null], [[3], [3]], [null, null], [5, 5]], message('zip'));
+    });
+  }(1, null, [3], null, 5));
+
+  /*--------------------------------------------------------------------------*/
+
   QUnit.module('lodash methods');
 
   (function() {
@@ -2972,10 +3407,11 @@
         'zip'
       ];
 
-      var funcs = _.without.apply(_, [_.functions(_)].concat([
-        '_',
-        '_each',
-        '_iteratorTemplate',
+      var allMethods = _.reject(_.functions(_), function(methodName) {
+        return /^_/.test(methodName);
+      });
+
+      var funcs = _.without.apply(_, [allMethods].concat([
         'after',
         'bind',
         'bindAll',
@@ -2995,12 +3431,9 @@
 
       _.each(funcs, function(methodName) {
         var actual = [],
+            expected = _.map(falsey, function() { return []; }),
             func = _[methodName],
             pass = true;
-
-        var expected = (methodName == 'union')
-          ? _.map(falsey, function(value, index) { return index ? [value] : []; })
-          : _.map(falsey, function() { return []; });
 
         _.each(falsey, function(value, index) {
           try {
@@ -3083,7 +3516,7 @@
 
   // configure QUnit and call `QUnit.start()` for
   // Narwhal, Node.js, PhantomJS, Rhino, and RingoJS
-  if (!window.document || window.phantom) {
+  if (!document || phantom) {
     QUnit.config.noglobals = true;
     QUnit.start();
   }
